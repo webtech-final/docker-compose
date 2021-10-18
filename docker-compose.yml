@@ -1,0 +1,92 @@
+version: '3'
+
+services:
+
+  frontend:
+    build:
+      context: ./frontend-webtech-final
+      dockerfile: Dockerfile
+    image: frontend 
+    container_name: frontend
+    restart: unless-stopped
+    tty: true
+    expose:
+      - 80
+    ports:
+      - 80:80
+    networks:
+      - tetris-network
+    
+  websocket:
+      build:
+          context: ./backend-tetris-websocket
+          dockerfile: Dockerfile
+      image: backend-websocket
+      container_name: backend-websocket
+      restart: unless-stopped
+      tty: true
+
+      expose:
+          - 3000
+      ports:
+          - 3000:3000
+      networks:
+          - tetris-network
+
+  api:
+    build:
+      context: ./backend-webtech-final
+      dockerfile: Dockerfile
+    image: backend-api
+    container_name: backend-api
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: api
+      SERVICE_TAGS: dev
+    working_dir: /var/www 
+    volumes:
+      - ./backend-api:/var/www
+      - ./backend-api/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - tetris-network
+    
+  api-server:
+    image: nginx:alpine
+    container_name: backend-api-server
+    restart: unless-stopped
+    tty: true
+    ports:
+      - 8000:80
+    volumes:
+      - ./backend-api:/var/www
+      - ./backend-api/nginx/conf.d:/etc/nginx/conf.d/
+    networks:
+      - tetris-network
+
+  api-db:
+    image: mysql:5.7.22
+    container_name: backend-api-db
+    restart: unless-stopped
+    tty: true
+    command: --disable-partition-engine-check
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_DATABASE: tetris_db
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - dbdata:/var/lib/mysql
+      - ./backend-api/mysql/my.cnf:/etc/mysql/my.cnf
+    networks:
+      - tetris-network
+
+networks:
+    tetris-network:
+        driver: bridge
+
+volumes:
+  dbdata:
+    driver: local
